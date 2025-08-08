@@ -1,0 +1,57 @@
+# Py Statements Parser Configuration Example
+
+# Database configuration
+database:
+  type: "sqlite"
+  path: "data/transactions.db"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}"
+  file: "logs/app.log"
+  rotation: "10 MB"
+  retention: "30 days"
+
+# Quicken integration configuration
+quicken:
+  enabled: false
+  executable_path: "/Applications/Quicken.app/Contents/MacOS/Quicken"
+  data_file: "~/Documents/Quicken/Data/MyData.qdf"
+
+# Institution-specific configurations
+institutions:
+  ipay:
+    # ADP IPay specific settings
+    date_formats:
+      - "%m/%d/%Y"
+      - "%m-%d-%Y"
+    currency_symbol: "$"
+    
+  icici:
+    # ICICI Bank specific settings
+    date_formats:
+      - "%d/%m/%Y"
+      - "%Y-%m-%d"
+    currency_symbol: "₹"
+    
+  robinhood:
+    # Robinhood specific settings
+    date_formats:
+      - "%m/%d/%Y"
+      - "%Y-%m-%d"
+    currency_symbol: "$"
+    
+  first-energy:
+    # First Energy specific settings
+    date_formats:
+      - "%m/%d/%Y"
+      - "%Y-%m-%d"
+    currency_symbol: "$"
+    
+  cash-app:
+    # Cash App specific settings
+    date_formats:
+      - "%m/%d/%Y"
+      - "%Y-%m-%d"
+    currency_symbol: "$" 
