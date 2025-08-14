@@ -2,18 +2,27 @@
 
 import sys
 from pathlib import Path
+
 from loguru import logger
 
 
-def setup_logging(verbose: bool = False, log_file: str = "app.log") -> None:
+def setup_logging(verbose: bool = False, log_file: str = None) -> None:
     """Setup logging configuration with log4j style formatting."""
-    
+
     # Remove default logger
     logger.remove()
-    
+
     # Determine log level
     log_level = "DEBUG" if verbose else "INFO"
-    
+
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+
+    # Set default log file path if not provided
+    if log_file is None:
+        log_file = logs_dir / "app.log"
+
     # Console handler with color
     logger.add(
         sys.stdout,
@@ -21,10 +30,10 @@ def setup_logging(verbose: bool = False, log_file: str = "app.log") -> None:
         level=log_level,
         colorize=True,
     )
-    
-    # File handler with rotation
+
+    # File handler with rotation - logs will be archived to logs/ folder
     logger.add(
-        log_file,
+        str(log_file),
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} | {message}",
         level="DEBUG",
         rotation="10 MB",
@@ -33,7 +42,7 @@ def setup_logging(verbose: bool = False, log_file: str = "app.log") -> None:
         backtrace=True,
         diagnose=True,
     )
-    
+
     # Add correlation ID and service context
     logger.configure(
         extra={
@@ -45,4 +54,4 @@ def setup_logging(verbose: bool = False, log_file: str = "app.log") -> None:
 
 def get_logger(name: str = None):
     """Get a logger instance with the specified name."""
-    return logger.bind(name=name or __name__) 
+    return logger.bind(name=name or __name__)

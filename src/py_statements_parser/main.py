@@ -1,11 +1,11 @@
 """Main CLI application for Py Statements Parser."""
 
-import typer
 from pathlib import Path
-from typing import Optional
 
-from .core.processor import StatementProcessor
+import typer
+
 from .core.config import Config
+from .core.processor import StatementProcessor
 from .utils.logging import setup_logging
 
 app = typer.Typer(
@@ -27,21 +27,27 @@ def main(
         ...,
         "--feature",
         "-f",
-        help="Feature to execute (rename-file, extract-transactions, extract-from-organized, generate-excel, enter-to-quicken)",
+        help="Feature to execute (rename-file, extract-transactions, extract-from-organized, generate-excel, enter-to-quicken, reconcile-ytd-transactions)",
     ),
-    input_folder: Optional[Path] = typer.Option(
+    year: str | None = typer.Option(
+        None,
+        "--year",
+        "-y",
+        help="Year for YTD reconciliation (YYYY or MM-YYYY format, required for reconcile-ytd-transactions feature)",
+    ),
+    input_folder: Path | None = typer.Option(
         None,
         "--input-folder",
         "-if",
         help="Path to folder containing unsorted statements (overrides INPUT_STATEMENTS_FOLDER env var)",
     ),
-    target_folder: Optional[Path] = typer.Option(
+    target_folder: Path | None = typer.Option(
         None,
-        "--target-folder", 
+        "--target-folder",
         "-tf",
         help="Path to folder where organized statements will be saved (overrides TARGET_STATEMENTS_FOLDER env var)",
     ),
-    config_file: Optional[Path] = typer.Option(
+    config_file: Path | None = typer.Option(
         None,
         "--config",
         "-c",
@@ -55,34 +61,45 @@ def main(
     ),
 ) -> None:
     """Process statements from various financial institutions."""
-    
+
     # Setup logging
     setup_logging(verbose=verbose)
-    
+
     # Load configuration
     config = Config.from_file(config_file) if config_file else Config()
-    
+
     # Override environment variables with command line arguments if provided
     if input_folder:
         config.input_statements_folder = str(input_folder)
     if target_folder:
         config.target_statements_folder = str(target_folder)
-    
+
     # Validate inputs
-    if feature not in ["rename-file", "extract-transactions", "extract-from-organized", "generate-excel", "enter-to-quicken"]:
-        typer.echo(f"Error: Invalid feature '{feature}'. Must be one of: rename-file, extract-transactions, extract-from-organized, generate-excel, enter-to-quicken")
+    if feature not in [
+        "rename-file",
+        "extract-transactions",
+        "extract-from-organized",
+        "generate-excel",
+        "enter-to-quicken",
+        "reconcile-ytd-transactions",
+    ]:
+        typer.echo(
+            f"Error: Invalid feature '{feature}'. Must be one of: rename-file, extract-transactions, extract-from-organized, generate-excel, enter-to-quicken, reconcile-ytd-transactions"
+        )
         raise typer.Exit(1)
-    
+
     if financial_institution not in ["ipay", "icici", "robinhood", "first-energy", "cash-app"]:
-        typer.echo(f"Error: Invalid financial institution '{financial_institution}'. Must be one of: ipay, icici, robinhood, first-energy, cash-app")
+        typer.echo(
+            f"Error: Invalid financial institution '{financial_institution}'. Must be one of: ipay, icici, robinhood, first-energy, cash-app"
+        )
         raise typer.Exit(1)
-    
+
     # Validate input folder
     if feature in ["rename-file", "extract-transactions", "generate-excel"] and not config.input_statements_folder:
         typer.echo(f"Error: Input folder is required for feature '{feature}'")
         typer.echo("Please provide --input-folder or set INPUT_STATEMENTS_FOLDER environment variable")
         raise typer.Exit(1)
-    
+
     # Validate target folder for features that need it
     if feature in ["rename-file", "extract-from-organized"] and not config.target_statements_folder:
         typer.echo("Error: Target folder is required for this feature")
@@ -92,21 +109,19 @@ def main(
         typer.echo("2. Export it in your shell: export TARGET_STATEMENTS_FOLDER=/path/to/your/organized/statements")
         typer.echo("Example: export TARGET_STATEMENTS_FOLDER=/Users/username/Documents/Financial/Statements")
         raise typer.Exit(1)
-    
+
     input_path = Path(config.input_statements_folder).expanduser() if config.input_statements_folder else None
     if input_path and not input_path.exists():
         typer.echo(f"Error: Input folder '{input_path}' does not exist")
         raise typer.Exit(1)
-    
 
-    
     try:
         # Initialize processor
         processor = StatementProcessor(
             financial_institution=financial_institution,
             config=config,
         )
-        
+
         # Execute feature
         if feature == "rename-file":
             processor.rename_files(input_path)
@@ -118,13 +133,18 @@ def main(
             processor.generate_excel(input_path)
         elif feature == "enter-to-quicken":
             processor.enter_to_quicken()
-            
+        elif feature == "reconcile-ytd-transactions":
+            if year is None:
+                typer.echo("Error: Year is required for reconcile-ytd-transactions feature")
+                raise typer.Exit(1)
+            processor.reconcile_ytd_transactions(year)
+
         typer.echo(f"Successfully completed {feature} for {financial_institution}")
-        
+
     except Exception as e:
         typer.echo(f"Error: {str(e)}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":
-    app() 
+    app()

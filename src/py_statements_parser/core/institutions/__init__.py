@@ -1,1 +1,1 @@
-"""Financial institution handlers for Py Statements Parser.""" 
+"""Financial institution handlers for Py Statements Parser."""

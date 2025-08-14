@@ -1,1 +1,1 @@
-"""Core modules for Py Statements Parser.""" 
+"""Core modules for Py Statements Parser."""

@@ -29,4 +29,4 @@ This example:
 
 - PDF files must be valid ADP IPay statements
 - Files should contain a "Pay Date" field that can be extracted
-- The application will create necessary directories automatically 
+- The application will create necessary directories automatically

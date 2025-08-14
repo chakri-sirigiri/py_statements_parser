@@ -1,0 +1,31 @@
+[default.extend-words]
+# HSA-related terms (Health Savings Account)
+hsa_plan = "hsa_plan"
+hsa = "hsa"
+HSA = "HSA"
+
+# Financial and insurance terms
+pretax = "pretax"
+pretax_dental = "pretax_dental"
+pretax_medical = "pretax_medical"
+pretax_vision = "pretax_vision"
+vol_acc = "vol_acc"
+vol_acc_40_20 = "vol_acc_40_20"
+vol_child_life = "vol_child_life"
+vol_spousal_life = "vol_spousal_life"
+k401_pretax = "k401_pretax"
+life_insurance = "life_insurance"
+illness_plan = "illness_plan"
+federal_income_tax = "federal_income_tax"
+social_security_tax = "social_security_tax"
+medicare_tax = "medicare_tax"
+state_income_tax = "state_income_tax"
+local_income_tax = "local_income_tax"
+brooklyn_income_tax = "brooklyn_income_tax"
+regular_pay = "regular_pay"
+gross_pay = "gross_pay"
+net_pay = "net_pay"
+
+# Technical terms
+pyproject = "pyproject"
+pyproject_toml = "pyproject.toml"

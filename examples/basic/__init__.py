@@ -1,1 +1,1 @@
-"""Basic examples for Py Statements Parser.""" 
+"""Basic examples for Py Statements Parser."""

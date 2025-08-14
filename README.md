@@ -16,7 +16,7 @@ A Python application to process statements from various financial institutions, 
 
 - **ADP IPay Statements** - Fully implemented
 - ICICI Bank Statements - Placeholder
-- Robinhood Statements - Placeholder  
+- Robinhood Statements - Placeholder
 - First Energy Statements - Placeholder
 - Cash App Statements - Placeholder
 
@@ -67,12 +67,14 @@ python main.py --financial-institution <institution> --feature <feature> [--inpu
 - `--feature` (`-f`): Feature to execute
   - `rename-file` - Rename and organize statement files by year
   - `extract-transactions` - Extract and store transactions (includes renaming first)
+  - `reconcile-ytd-transactions` - Reconcile YTD transactions (YYYY or MM-YYYY format)
   - `extract-from-organized` - Extract transactions from already organized files
   - `generate-excel` - Generate Excel file with transactions
   - `enter-to-quicken` - Enter transactions into Quicken
 
 - `--input-folder` (`-if`): Path to folder containing unsorted statements (overrides INPUT_STATEMENTS_FOLDER env var)
 - `--target-folder` (`-tf`): Path to folder where organized statements will be saved (overrides TARGET_STATEMENTS_FOLDER env var)
+- `--year` (`-y`): Year for YTD reconciliation (YYYY or MM-YYYY format, required for reconcile-ytd-transactions feature)
 - `--config` (`-c`): Path to configuration file (optional)
 - `--verbose` (`-v`): Enable verbose logging
 
@@ -115,19 +117,33 @@ python main.py --financial-institution ipay --feature generate-excel --input-fol
 
 # Enter transactions into Quicken (when implemented)
 python main.py --financial-institution ipay --feature enter-to-quicken
+
+# Reconcile YTD transactions for 2025
+uv run python main.py -fi ipay -f reconcile-ytd-transactions -y 2025
+
+# Reconcile YTD transactions up to June 2025
+uv run python main.py -fi ipay -f reconcile-ytd-transactions -y 06-2025
 ```
 
 **File Organization Example:**
 ```
 Source: {INPUT_STATEMENTS_FOLDER}/Statement for Jul 31, 2025.pdf
-Target: {TARGET_STATEMENTS_FOLDER}/ipay/2025/2025-07-31.pdf
+Target: {TARGET_STATEMENTS_FOLDER}/ipay/2025/2025-07-31-regular.pdf
 
-Source: {INPUT_STATEMENTS_FOLDER}/Statement for Aug 31, 2025.pdf  
-Target: {TARGET_STATEMENTS_FOLDER}/ipay/2025/2025-08-31.pdf
+Source: {INPUT_STATEMENTS_FOLDER}/Statement for Aug 31, 2025.pdf
+Target: {TARGET_STATEMENTS_FOLDER}/ipay/2025/2025-08-31-regular.pdf
 
 Source: {INPUT_STATEMENTS_FOLDER}/ICICI Bank Statement for Aug 31, 2025.pdf
 Target: {TARGET_STATEMENTS_FOLDER}/icici/2025/2025-08-31.pdf
+
+Source: {INPUT_STATEMENTS_FOLDER}/Year End Summary 2025.pdf
+Target: {TARGET_STATEMENTS_FOLDER}/ipay/2025/2025-12-31-ye-summary.pdf
 ```
+
+**Note**: Files are automatically categorized based on input filename conventions:
+- **Regular**: Any file not containing `bonus` or `ytd` → `-regular.pdf`
+- **Bonus**: Files containing `bonus` anywhere in filename → `-bonus.pdf`
+- **Year-end summary**: Files containing `ytd` anywhere in filename → `-ye-summary.pdf` (skipped during transaction extraction)
 
 ### Workflow
 
@@ -143,21 +159,25 @@ Target: {TARGET_STATEMENTS_FOLDER}/icici/2025/2025-08-31.pdf
 The IPay processor extracts the following information from statements:
 
 - **Pay Date**: Used to rename files to YYYY-MM-DD format
-- **Pay Period**: Statement period information
-- **Gross Pay**: Total gross pay amount
+- **Regular Pay**: Regular salary amount from "Regular" line
+- **Bonus**: Bonus amount from "Bonus" line (if present)
+- **Vacation**: Vacation pay amount from "Vacation" line (mapped to other_income)
+- **Gross Pay**: Calculated as Regular Pay + Bonus
 - **Federal Income Tax**: Federal tax deductions
 - **Social Security Tax**: Social security contributions
 - **Medicare Tax**: Medicare contributions
 - **OH State Income Tax**: Ohio state tax
 - **Brooklyn Income Tax**: Local tax deductions
-- **HSA Plan**: Health Savings Account contributions
+- **HAS Plan**: Health Savings Account contributions
 - **Illness Plan**: Illness plan deductions
 - **Legal**: Legal plan contributions
 - **Life Insurance**: Life insurance premiums
 - **Pretax Dental**: Dental plan contributions
+
+**📖 For detailed iPay documentation including YTD reconciliation features, see [README_ipay.md](README_ipay.md)**
 - **Pretax Medical**: Medical plan contributions
 - **Pretax Vision**: Vision plan contributions
-- **Vol Acc 40/20**: Voluntary accident insurance
+- **Vol Acc 40/20/20/10**: Voluntary accident insurance (supports both 40/20 and 20/10 variations)
 - **Vol Child Life**: Voluntary child life insurance
 - **Vol Spousal Life**: Voluntary spousal life insurance
 - **401K Pretax**: 401(k) contributions
@@ -220,6 +240,14 @@ uv run ruff format
 3. Implement the required methods
 4. Add the handler to the processor mapping
 
+
+
 ## License
 
 [Add your license information here]
+# Test comment
+# Another test comment
+# Final test comment
+# test comment 2
+# Test comment
+# Another test comment

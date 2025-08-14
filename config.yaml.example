@@ -27,31 +27,31 @@ institutions:
       - "%m/%d/%Y"
       - "%m-%d-%Y"
     currency_symbol: "$"
-    
+
   icici:
     # ICICI Bank specific settings
     date_formats:
       - "%d/%m/%Y"
       - "%Y-%m-%d"
     currency_symbol: "₹"
-    
+
   robinhood:
     # Robinhood specific settings
     date_formats:
       - "%m/%d/%Y"
       - "%Y-%m-%d"
     currency_symbol: "$"
-    
+
   first-energy:
     # First Energy specific settings
     date_formats:
       - "%m/%d/%Y"
       - "%Y-%m-%d"
     currency_symbol: "$"
-    
+
   cash-app:
     # Cash App specific settings
     date_formats:
       - "%m/%d/%Y"
       - "%Y-%m-%d"
-    currency_symbol: "$" 
+    currency_symbol: "$"
