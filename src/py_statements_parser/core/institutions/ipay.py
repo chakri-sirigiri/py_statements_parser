@@ -313,6 +313,16 @@ class IPayInstitution(BaseInstitution):
             return
 
         try:
+            import pandas as pd
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils.dataframe import dataframe_to_rows
+            from openpyxl import Workbook
+            from datetime import datetime
+        except ImportError as e:
+            self.logger.error(f"Required packages not available: {e}")
+            raise
+
+        try:
             # Convert to DataFrame
             df = pd.DataFrame(transactions)
 
@@ -349,31 +359,258 @@ class IPayInstitution(BaseInstitution):
             available_columns = [col for col in column_order if col in df.columns]
             df = df[available_columns]
 
-            # Write to Excel
-            with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-                df.to_excel(writer, sheet_name="IPay Transactions", index=False)
+            # Create a new workbook
+            wb = Workbook()
+            
+            # Remove default sheet
+            wb.remove(wb.active)
 
-                # Get the worksheet to format it
-                worksheet = writer.sheets["IPay Transactions"]
+            # Create Transactions sheet
+            ws_transactions = wb.create_sheet("Transactions")
+            
+            # Write transactions data
+            for r in dataframe_to_rows(df, index=False, header=True):
+                ws_transactions.append(r)
 
-                # Auto-adjust column widths
-                for column in worksheet.columns:
-                    max_length = 0
-                    column_letter = column[0].column_letter
-                    for cell in column:
-                        try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except Exception:
-                            pass
-                    adjusted_width = min(max_length + 2, 50)
-                    worksheet.column_dimensions[column_letter].width = adjusted_width
+            # Format the transactions sheet
+            self._format_transactions_sheet(ws_transactions)
+
+            # Create Summary sheet
+            ws_summary = wb.create_sheet("Summary")
+            self._create_summary_sheet(ws_summary, df)
+
+            # Create Yearly Summary sheet
+            ws_yearly = wb.create_sheet("Yearly Summary")
+            self._create_yearly_summary_sheet(ws_yearly, df)
+
+            # Save the workbook
+            wb.save(output_file)
 
             self.logger.info(f"Generated Excel file: {output_file}")
 
         except Exception as e:
             self.logger.error(f"Error generating Excel file: {str(e)}")
             raise
+
+    def _format_transactions_sheet(self, worksheet):
+        """Format the transactions worksheet."""
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        
+        # Define styles
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        # Format header row
+        for cell in worksheet[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = border
+
+        # Format data rows
+        for row in worksheet.iter_rows(min_row=2):
+            for cell in row:
+                cell.border = border
+                if cell.column == 1:  # Date column
+                    cell.number_format = 'YYYY-MM-DD'
+                elif cell.column > 1 and cell.value is not None:  # Numeric columns
+                    try:
+                        float(cell.value)
+                        cell.number_format = '#,##0.00'
+                    except (ValueError, TypeError):
+                        pass
+
+        # Auto-adjust column widths
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = None
+            for cell in column:
+                try:
+                    # Skip merged cells that don't have column_letter attribute
+                    if hasattr(cell, 'column_letter'):
+                        if column_letter is None:
+                            column_letter = cell.column_letter
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                except Exception:
+                    pass
+            
+            # Only adjust width if we have a valid column letter
+            if column_letter:
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+
+    def _create_summary_sheet(self, worksheet, df):
+        """Create a summary sheet with totals and statistics."""
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        
+        # Define styles
+        title_font = Font(bold=True, size=14)
+        header_font = Font(bold=True)
+        header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        # Title
+        worksheet['A1'] = "IPay Transactions Summary"
+        worksheet['A1'].font = title_font
+        worksheet.merge_cells('A1:C1')
+
+        # Summary statistics
+        summary_data = [
+            ["Metric", "Value", "Description"],
+            ["Total Transactions", len(df), "Number of pay statements"],
+            ["Date Range", f"{df['statement_date'].min()} to {df['statement_date'].max()}", "Earliest to latest date"],
+            ["", "", ""],
+            ["Earnings Summary", "", ""],
+            ["Total Regular Pay", df['regular_pay'].sum(), "Sum of all regular pay amounts"],
+            ["Total Bonus", df['bonus'].sum(), "Sum of all bonus amounts"],
+            ["Total Other Income", df['other_income'].sum(), "Sum of all other income"],
+            ["Total Gross Pay", df['gross_pay'].sum(), "Sum of all gross pay amounts"],
+            ["Total Net Pay", df['net_pay'].sum(), "Sum of all net pay amounts"],
+            ["", "", ""],
+            ["Deductions Summary", "", ""],
+            ["Total Federal Tax", df['federal_income_tax'].sum(), "Sum of all federal income tax"],
+            ["Total Social Security", df['social_security_tax'].sum(), "Sum of all social security tax"],
+            ["Total Medicare", df['medicare_tax'].sum(), "Sum of all medicare tax"],
+            ["Total State Tax", df['state_income_tax'].sum(), "Sum of all state income tax"],
+            ["Total Local Tax", df['local_income_tax'].sum(), "Sum of all local income tax"],
+            ["Total 401k", df['k401_pretax'].sum(), "Sum of all 401k contributions"],
+            ["Total HSA", df['hsa_plan'].sum(), "Sum of all HSA contributions"],
+        ]
+
+        # Write summary data
+        for row_idx, row_data in enumerate(summary_data, start=3):
+            for col_idx, value in enumerate(row_data, start=1):
+                cell = worksheet.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = border
+                
+                if row_idx == 3:  # Header row
+                    cell.font = header_font
+                    cell.fill = header_fill
+                elif col_idx == 2 and row_idx > 3 and value != "":  # Value column
+                    try:
+                        float(value)
+                        cell.number_format = '#,##0.00'
+                    except (ValueError, TypeError):
+                        pass
+
+        # Auto-adjust column widths
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = None
+            for cell in column:
+                try:
+                    # Skip merged cells that don't have column_letter attribute
+                    if hasattr(cell, 'column_letter'):
+                        if column_letter is None:
+                            column_letter = cell.column_letter
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                except Exception:
+                    pass
+            
+            # Only adjust width if we have a valid column letter
+            if column_letter:
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+
+    def _create_yearly_summary_sheet(self, worksheet, df):
+        """Create a yearly summary sheet with data grouped by year."""
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        
+        # Define styles
+        title_font = Font(bold=True, size=14)
+        header_font = Font(bold=True)
+        header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        # Title
+        worksheet['A1'] = "IPay Transactions - Yearly Summary"
+        worksheet['A1'].font = title_font
+        worksheet.merge_cells('A1:H1')
+
+        # Convert statement_date to datetime and extract year
+        df['year'] = pd.to_datetime(df['statement_date']).dt.year
+        
+        # Group by year and calculate summaries
+        yearly_summary = df.groupby('year').agg({
+            'regular_pay': 'sum',
+            'bonus': 'sum',
+            'other_income': 'sum',
+            'gross_pay': 'sum',
+            'net_pay': 'sum',
+            'federal_income_tax': 'sum',
+            'social_security_tax': 'sum',
+            'medicare_tax': 'sum',
+            'state_income_tax': 'sum',
+            'local_income_tax': 'sum',
+            'k401_pretax': 'sum',
+            'hsa_plan': 'sum',
+        }).reset_index()
+
+        # Headers
+        headers = [
+            "Year", "Regular Pay", "Bonus", "Other Income", "Gross Pay", "Net Pay",
+            "Federal Tax", "Social Security", "Medicare", "State Tax", "Local Tax",
+            "401k", "HSA"
+        ]
+        
+        for col_idx, header in enumerate(headers, start=1):
+            cell = worksheet.cell(row=3, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = border
+
+        # Data rows
+        for row_idx, (_, row_data) in enumerate(yearly_summary.iterrows(), start=4):
+            for col_idx, value in enumerate(row_data, start=1):
+                cell = worksheet.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = border
+                
+                if col_idx > 1:  # Numeric columns
+                    try:
+                        float(value)
+                        cell.number_format = '#,##0.00'
+                    except (ValueError, TypeError):
+                        pass
+
+        # Auto-adjust column widths
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = None
+            for cell in column:
+                try:
+                    # Skip merged cells that don't have column_letter attribute
+                    if hasattr(cell, 'column_letter'):
+                        if column_letter is None:
+                            column_letter = cell.column_letter
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                except Exception:
+                    pass
+            
+            # Only adjust width if we have a valid column letter
+            if column_letter:
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
 
     def enter_to_quicken(self, transactions: list[dict[str, Any]], quicken_config: Any) -> None:
         """Enter transactions into Quicken application."""

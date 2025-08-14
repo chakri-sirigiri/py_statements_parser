@@ -401,6 +401,36 @@ class StatementProcessor:
             self.logger.error(f"Error generating Excel file: {str(e)}")
             raise
 
+    def export_to_excel(self) -> None:
+        """Export transactions from database to Excel file."""
+        self.logger.info("Starting database export to Excel")
+
+        try:
+            # Get all transactions from database
+            transactions = self.db_manager.get_all_transactions(self.financial_institution)
+
+            if not transactions:
+                self.logger.warning("No transactions found in database")
+                return
+
+            # Create output directory if target folder is configured
+            if self.config.target_statements_folder:
+                target_base = Path(self.config.target_statements_folder).expanduser()
+                institution_folder = target_base / self.financial_institution
+                institution_folder.mkdir(parents=True, exist_ok=True)
+                output_file = institution_folder / f"{self.financial_institution}_export.xlsx"
+            else:
+                # Default to current directory if no target folder configured
+                output_file = Path(f"{self.financial_institution}_export.xlsx")
+
+            self.institution.generate_excel(transactions, output_file)
+
+            self.logger.info(f"Exported Excel file: {output_file}")
+
+        except Exception as e:
+            self.logger.error(f"Error exporting to Excel: {str(e)}")
+            raise
+
     def enter_to_quicken(self) -> None:
         """Enter transactions into Quicken application."""
         self.logger.info("Starting Quicken integration")

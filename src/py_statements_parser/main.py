@@ -27,7 +27,7 @@ def main(
         ...,
         "--feature",
         "-f",
-        help="Feature to execute (rename-file, extract-transactions, extract-from-organized, generate-excel, enter-to-quicken, reconcile-ytd-transactions)",
+        help="Feature to execute (rename-file, extract-transactions, extract-from-organized, generate-excel, export-to-excel, enter-to-quicken, reconcile-ytd-transactions)",
     ),
     year: str | None = typer.Option(
         None,
@@ -80,11 +80,12 @@ def main(
         "extract-transactions",
         "extract-from-organized",
         "generate-excel",
+        "export-to-excel",
         "enter-to-quicken",
         "reconcile-ytd-transactions",
     ]:
         typer.echo(
-            f"Error: Invalid feature '{feature}'. Must be one of: rename-file, extract-transactions, extract-from-organized, generate-excel, enter-to-quicken, reconcile-ytd-transactions"
+            f"Error: Invalid feature '{feature}'. Must be one of: rename-file, extract-transactions, extract-from-organized, generate-excel, export-to-excel, enter-to-quicken, reconcile-ytd-transactions"
         )
         raise typer.Exit(1)
 
@@ -131,6 +132,8 @@ def main(
             processor.extract_transactions_from_organized()
         elif feature == "generate-excel":
             processor.generate_excel(input_path)
+        elif feature == "export-to-excel":
+            processor.export_to_excel()
         elif feature == "enter-to-quicken":
             processor.enter_to_quicken()
         elif feature == "reconcile-ytd-transactions":
